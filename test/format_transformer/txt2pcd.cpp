@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     std::cout << "Transform begin" << std::endl;
 
     // Load point cloud
-    fstream input(infile.c_str(), ios::in | ios::binary);
+    std::fstream input(infile.c_str(), ios::in | ios::binary);
     if (!input.good())
     {
         cerr << "Could not read file: " << infile << endl;
