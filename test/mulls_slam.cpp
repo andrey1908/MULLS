@@ -385,6 +385,7 @@ int main(int argc, char **argv)
     initial_guess_tran(0, 3) = 0.5;     //initialization
     for (int i = 1; i < frame_num; i++) //throughout all the used frames
     {
+        std::cout << std::endl << std::endl;
         std::chrono::steady_clock::time_point tic = std::chrono::steady_clock::now();
         accu_frame_count_wo_opt++;
         if (i == 1) // for the first scan matching (no initial guess avaliable --> larger corr distance)

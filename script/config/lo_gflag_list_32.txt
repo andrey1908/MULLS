@@ -75,7 +75,7 @@
 --semantic_assist_on=false
 --detect_curb_or_not=false
 -motion_compensation_method: (0: disabled, 1: uniform motion model (from point-wise timestamp), 2: from azimuth, 3: imu-assisted)
---motion_compensation_method=1
+--motion_compensation_method=0
 -dist_inverse_sampling_method: (0: disabled, 1: linear weight, 2: quadratic weight)
 --dist_inverse_sampling_method=1
 -ground_normal_method: (0: directly use (0,0,1), 1: estimate normal in fixed radius neighborhood, 2: estimate normal in k nearest neighborhood , 3: use ransac to estimate plane coeffs in a grid)
