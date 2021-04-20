@@ -288,7 +288,8 @@ int main(int argc, char **argv)
         mviewer.set_interactive_events(scan_viewer, FLAGS_screen_width / 2, FLAGS_screen_height / 2);
         mviewer.set_interactive_events(map_viewer, FLAGS_screen_width / 2, FLAGS_screen_height);
     }
-    double time_count = 0.0;
+    //double time_count = 0.0;
+    double time_used_without_IO = 0.0;
     std::vector<std::string> filenames;
     dataio.batch_read_filenames_in_folder(pc_folder, "_filelist.txt", pc_format, filenames, FLAGS_frame_num_begin, FLAGS_frame_num_end, FLAGS_frame_step);
     Matrix4ds poses_gt_body_cs;  //in vehicle body (gnssins) coordinate system
@@ -781,6 +782,7 @@ int main(int argc, char **argv)
         poses_lo_adjacent.push_back(adjacent_pose_out); //poses_lo_adjacent is the container of adjacent_pose_out
 
         //update initial guess
+        std::chrono::steady_clock::time_point toc_write_out_pose = std::chrono::steady_clock::now();
         initial_guess_tran.setIdentity();
         if (initial_guess_mode == 1 && lo_status_healthy)
             initial_guess_tran.block<3, 1>(0, 3) = adjacent_pose_out.inverse().block<3, 1>(0, 3); //uniform motion model
@@ -806,13 +808,17 @@ int main(int argc, char **argv)
         current_linear_velocity = nav.cal_velocity(poses_lo_adjacent);
         //report timing
         std::chrono::steady_clock::time_point toc_output = std::chrono::steady_clock::now();
+        std::chrono::duration<double> time_used_per_frame_without_IO_1 = std::chrono::duration_cast<std::chrono::duration<double>>(toc - toc_import_pc);
+        std::chrono::duration<double> time_used_per_frame_without_IO_2 = std::chrono::duration_cast<std::chrono::duration<double>>(toc_output - toc_write_out_pose);
         std::chrono::duration<double> time_used_per_frame_lo_1 = std::chrono::duration_cast<std::chrono::duration<double>>(toc_update_map - toc_import_pc);
         std::chrono::duration<double> time_used_per_frame_lo_2 = std::chrono::duration_cast<std::chrono::duration<double>>(toc_registration - toc_loop_closure);
         std::chrono::duration<double> time_used_per_frame_1 = std::chrono::duration_cast<std::chrono::duration<double>>(toc - tic);
         std::chrono::duration<double> time_used_per_frame_2 = std::chrono::duration_cast<std::chrono::duration<double>>(toc_output - tic_output);
-        time_count += (time_used_per_frame_lo_1.count() + time_used_per_frame_lo_2.count());
-        LOG(INFO) << "Consuming time of lidar odometry for current frame is [" << 1000.0 * (time_used_per_frame_lo_1.count() + time_used_per_frame_lo_2.count()) << "] ms.\n";
+        time_used_without_IO += (time_used_per_frame_without_IO_1.count() + time_used_per_frame_without_IO_2.count());
+        //time_count += (time_used_per_frame_lo_1.count() + time_used_per_frame_lo_2.count());
+        //LOG(INFO) << "Consuming time of lidar odometry for current frame is [" << 1000.0 * (time_used_per_frame_lo_1.count() + time_used_per_frame_lo_2.count()) << "] ms.\n";
         LOG(INFO) << "Process frame (including data IO) [" << i << "] in [" << 1000.0 * (time_used_per_frame_1.count() + time_used_per_frame_2.count()) << "] ms.\n";
+        LOG(INFO) << "Time used to process the frame (without IO) [" << 1000.0 * (time_used_per_frame_without_IO_1.count() + time_used_per_frame_without_IO_2.count()) << "] ms.\n";
         //record timing
         std::chrono::duration<double> time_used_per_frame_feature_extraction = std::chrono::duration_cast<std::chrono::duration<double>>(toc_feature_extraction - toc_import_pc);
         std::chrono::duration<double> time_used_per_frame_map_updating = std::chrono::duration_cast<std::chrono::duration<double>>(toc_update_map - toc_feature_extraction);
@@ -826,8 +832,9 @@ int main(int argc, char **argv)
     cloudblock_Ptr current_cblock_frame(new cloudblock_t(*cblock_target));
     current_cblock_frame->pose_optimized = current_cblock_frame->pose_lo;
     cblock_frames.push_back(current_cblock_frame);
-    LOG(INFO) << "Lidar Odometry done. Average processing time per frame is ["
-              << 1000.0 * time_count / frame_num << "] ms over [" << frame_num << "] frames\n";
+    std::cout << std::endl << std::endl;
+    LOG(INFO) << "Lidar Odometry done. Average processing time per frame without IO is [" << 1000.0 * time_used_without_IO / (frame_num - 1) << "] ms over [" << frame_num << "] frames\n";
+    //LOG(INFO) << "Lidar Odometry done. Average processing time per frame is [" << 1000.0 * time_count / frame_num << "] ms over [" << frame_num << "] frames\n";
     mviewer.keep_visualize(map_viewer);
 
     if (loop_closure_detection_on)
