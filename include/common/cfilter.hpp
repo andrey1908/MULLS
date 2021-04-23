@@ -147,8 +147,21 @@ class CFilter : public CloudUtility<PointT>
 			cloud_out->push_back(cloud_in->points[id_pairs[begin_id].idx]);
 
 			int compare_id = begin_id + 1;
+			int num = 1;
 			while (compare_id < id_pairs.size() && id_pairs[begin_id].voxel_idx == id_pairs[compare_id].voxel_idx)
+			{
+			    auto new_point = cloud_in->points[id_pairs[compare_id].idx];
+			    cloud_out->points.rbegin()->x += new_point.x;
+			    cloud_out->points.rbegin()->y += new_point.y;
+			    cloud_out->points.rbegin()->z += new_point.z;
+			    cloud_out->points.rbegin()->intensity += new_point.intensity;
 				compare_id++;
+				num++;
+		    }
+		    cloud_out->points.rbegin()->x /= num;
+		    cloud_out->points.rbegin()->y /= num;
+		    cloud_out->points.rbegin()->z /= num;
+		    cloud_out->points.rbegin()->intensity /= num;
 			begin_id = compare_id;
 		}
 
