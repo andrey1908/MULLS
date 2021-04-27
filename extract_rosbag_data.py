@@ -13,12 +13,12 @@ def build_parser():
     parser.add_argument('-bag', '--rosbag-file', required=True, type=str)
     parser.add_argument('-pc-t', '--point-cloud-topic-name', required=True, type=str)
     parser.add_argument('-pc-out-fld', '--point-cloud-out-folder', required=True, type=str)
-    parser.add_argument('-odom-t', '--odometry-topic-name', type=str)
+    parser.add_argument('-odom-t', '--odometry-topic-name', type=str, default='')
     parser.add_argument('-odom-out', '--odometry-out-file', type=str)
     return parser
 
 
-# transform that converts vector from the coordinate system that odometry is desired to be set in
+# transform that converts points from the coordinate system that odometry is desired to be set in
 # to the coordinate system in which odometry is set now
 def get_odometry_transform():
     translation = np.array([-0.281346739032, 0.0410160626131, 0.455256331759])
@@ -27,14 +27,17 @@ def get_odometry_transform():
 
 
 def extract_rosbag_data(rosbag_file, point_cloud_topic_name, point_cloud_out_folder,
-                        odometry_topic_name=None, odometry_out_file=None):
+                        odometry_topic_name='', odometry_out_file=None):
     counter = 0
     last_timestamp = -1.
     point_cloud_stamps = list()
     odometry_stamps = list()
     odometry_poses = list()
+    required_fields = ['x', 'y', 'z', 'intensity']
     os.makedirs(point_cloud_out_folder, exist_ok=True)
-    for topic, msg, t in tqdm(rosbag.Bag(rosbag_file).read_messages()):
+    rosbag_opened = rosbag.Bag(rosbag_file)
+    for topic, msg, t in tqdm(rosbag_opened.read_messages(topics=[point_cloud_topic_name, odometry_topic_name]),
+                              total=rosbag_opened.get_message_count([point_cloud_topic_name, odometry_topic_name])):
         if topic == point_cloud_topic_name:
             timestamp = msg.header.stamp.to_sec()
             if last_timestamp >= timestamp:
@@ -42,7 +45,11 @@ def extract_rosbag_data(rosbag_file, point_cloud_topic_name, point_cloud_out_fol
             last_timestamp = timestamp
             point_cloud_stamps.append(timestamp)
             pc = pypcd.PointCloud.from_msg(msg)
-            pc = pypcd.remove_fields(pc, ['timestamp'])
+            fields_to_remove = [field for field in pc.fields if field not in required_fields]
+            pc = pypcd.remove_fields(pc, fields_to_remove)
+            if pc.fields != required_fields:
+                raise Exception('After removing excess fields, fields in point cloud ({}) don\'t match required '
+                                'fields ({}).'.format(pc.fields, required_fields))
             pc = pypcd.remove_invalid_points(pc)
             pc.save_pcd(osp.join(point_cloud_out_folder, str(counter).zfill(6) + '.pcd'), compression='binary')
             counter += 1
