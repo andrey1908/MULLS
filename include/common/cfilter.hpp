@@ -1306,7 +1306,7 @@ class CFilter : public CloudUtility<PointT>
 		std::chrono::steady_clock::time_point toc = std::chrono::steady_clock::now();
 		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>(toc - tic);
 
-		//LOG(INFO) << "NMS done from [" << pt_count_before << "] to [" << pt_count_after_nms << "] points in [" << 1000.0 * time_used.count() << "] ms.";
+		LOG(INFO) << "NMS done from [" << pt_count_before << "] to [" << pt_count_after_nms << "] points in [" << 1000.0 * time_used.count() << "] ms.";
 
 		return true;
 	}
