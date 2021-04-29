@@ -384,6 +384,10 @@ int main(int argc, char **argv)
         timing_array[0].push_back(0.0);
 
     initial_guess_tran(0, 3) = 0.5;     //initialization
+    double rotation_angle = 0.;
+    char* rotation_angles_file_name = "SDBCS_Husky/15/rotation_angles.txt";
+    std::ofstream rotation_angles_file(rotation_angles_file_name);
+    int count_down = 0;
     for (int i = 1; i < frame_num; i++) //throughout all the used frames
     {
         std::cout << std::endl << std::endl;
@@ -436,12 +440,30 @@ int main(int argc, char **argv)
         else
             local_map_recalculate_feature_on = false;
 
-        if (i > FLAGS_initial_scan2scan_frame_num + 1)
-            mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius,
-                                      FLAGS_apply_map_based_dynamic_removal, FLAGS_used_feature_type, dynamic_removal_radius, dynamic_dist_thre_min, current_linear_velocity * 0.15,
-                                      FLAGS_map_min_dist_within_feature, local_map_recalculate_feature_on); //1.5 * 0.1 * velocity (set as the max distance threshold for dynamic obejcts)
+        if (rotation_angle >= 0.08)
+        {
+            count_down = 20;
+        }
+        if (count_down == 0)
+        {
+            if (i > FLAGS_initial_scan2scan_frame_num + 1)
+                mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius,
+                                          FLAGS_apply_map_based_dynamic_removal, FLAGS_used_feature_type, dynamic_removal_radius, dynamic_dist_thre_min, current_linear_velocity * 0.15,
+                                          FLAGS_map_min_dist_within_feature, local_map_recalculate_feature_on); //1.5 * 0.1 * velocity (set as the max distance threshold for dynamic obejcts)
+            else
+                mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius, false, FLAGS_used_feature_type);
+        }
         else
-            mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius, false, FLAGS_used_feature_type);
+        {
+            cloudblock_Ptr dummy_cblock_target(new cloudblock_t(*cblock_target, false, false));
+            if (i > FLAGS_initial_scan2scan_frame_num + 1)
+                mmanager.update_local_map(cblock_local_map, dummy_cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius,
+                                          FLAGS_apply_map_based_dynamic_removal, FLAGS_used_feature_type, dynamic_removal_radius, dynamic_dist_thre_min, current_linear_velocity * 0.15,
+                                          FLAGS_map_min_dist_within_feature, local_map_recalculate_feature_on); //1.5 * 0.1 * velocity (set as the max distance threshold for dynamic obejcts)
+            else
+                mmanager.update_local_map(cblock_local_map, dummy_cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius, false, FLAGS_used_feature_type);
+            count_down--;
+        }
 
         int temp_accu_frame = accu_frame;
         if (loop_closure_detection_on) //determine if we can add a new submap
@@ -788,6 +810,9 @@ int main(int argc, char **argv)
             initial_guess_tran.block<3, 1>(0, 3) = adjacent_pose_out.inverse().block<3, 1>(0, 3); //uniform motion model
         else if (initial_guess_mode == 2 && lo_status_healthy)
             initial_guess_tran = adjacent_pose_out.inverse();
+            
+        rotation_angle = std::acos((adjacent_pose_out.block<3, 3>(0, 0).trace() - 1) / 2);
+        rotation_angles_file << rotation_angle << std::endl;
 
         //save current frame (only metadata)
         cloudblock_Ptr current_cblock_frame(new cloudblock_t(*cblock_target));
@@ -829,6 +854,7 @@ int main(int argc, char **argv)
         timing_array[i].push_back(time_used_per_frame_registration.count());
         timing_array[i].push_back(time_used_per_frame_loop_closure.count());
     }
+    rotation_angles_file.close();
     cloudblock_Ptr current_cblock_frame(new cloudblock_t(*cblock_target));
     current_cblock_frame->pose_optimized = current_cblock_frame->pose_lo;
     cblock_frames.push_back(current_cblock_frame);
