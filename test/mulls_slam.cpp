@@ -196,6 +196,8 @@ DEFINE_string(baseline_reg_method, "", "name of the baseline lidar odometery met
 DEFINE_double(reg_voxel_size, 1.0, "the grid size of ndt or vgicp");
 DEFINE_bool(ndt_searching_method, true, "using direct searching or kdtree (0: kdtree, 1: direct7)");
 DEFINE_bool(voxel_gicp_on, true, "using voxel based gicp (faster)");
+//custom parameters
+DEFINE_double(icp_standard_deviation_threshold, 100., "if icp standard deviation is larger than this threshold then feature points are not added to the local map");
 //Note: Set these parameters in the config file , or the default values are used.
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 int main(int argc, char **argv)
@@ -384,6 +386,7 @@ int main(int argc, char **argv)
         timing_array[0].push_back(0.0);
 
     initial_guess_tran(0, 3) = 0.5;     //initialization
+    float icp_standard_deviation = 0.;
     for (int i = 1; i < frame_num; i++) //throughout all the used frames
     {
         std::cout << std::endl << std::endl;
@@ -436,12 +439,25 @@ int main(int argc, char **argv)
         else
             local_map_recalculate_feature_on = false;
 
-        if (i > FLAGS_initial_scan2scan_frame_num + 1)
-            mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius,
-                                      FLAGS_apply_map_based_dynamic_removal, FLAGS_used_feature_type, dynamic_removal_radius, dynamic_dist_thre_min, current_linear_velocity * 0.15,
-                                      FLAGS_map_min_dist_within_feature, local_map_recalculate_feature_on); //1.5 * 0.1 * velocity (set as the max distance threshold for dynamic obejcts)
+        if (icp_standard_deviation <= FLAGS_icp_standard_deviation_threshold)
+        {
+            if (i > FLAGS_initial_scan2scan_frame_num + 1)
+                mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius,
+                                          FLAGS_apply_map_based_dynamic_removal, FLAGS_used_feature_type, dynamic_removal_radius, dynamic_dist_thre_min, current_linear_velocity * 0.15,
+                                          FLAGS_map_min_dist_within_feature, local_map_recalculate_feature_on); //1.5 * 0.1 * velocity (set as the max distance threshold for dynamic obejcts)
+            else
+                mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius, false, FLAGS_used_feature_type);
+        }
         else
-            mmanager.update_local_map(cblock_local_map, cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius, false, FLAGS_used_feature_type);
+        {
+            cloudblock_Ptr dummy_cblock_target(new cloudblock_t(*cblock_target, false, false));
+            if (i > FLAGS_initial_scan2scan_frame_num + 1)
+                mmanager.update_local_map(cblock_local_map, dummy_cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius,
+                                          FLAGS_apply_map_based_dynamic_removal, FLAGS_used_feature_type, dynamic_removal_radius, dynamic_dist_thre_min, current_linear_velocity * 0.15,
+                                          FLAGS_map_min_dist_within_feature, local_map_recalculate_feature_on); //1.5 * 0.1 * velocity (set as the max distance threshold for dynamic obejcts)
+            else
+                mmanager.update_local_map(cblock_local_map, dummy_cblock_target, local_map_radius, local_map_max_pt_num, vertex_keeping_num, append_frame_radius, false, FLAGS_used_feature_type);
+        }
 
         int temp_accu_frame = accu_frame;
         if (loop_closure_detection_on) //determine if we can add a new submap
@@ -687,7 +703,7 @@ int main(int argc, char **argv)
                                                                    pt2pt_residual_window, pt2pl_residual_window, pt2li_residual_window,
                                                                    initial_guess_tran, FLAGS_reg_intersection_filter_on,
                                                                    motion_com_while_reg_on, FLAGS_normal_shooting_on, FLAGS_normal_bearing,
-                                                                   false, false, FLAGS_post_sigma_thre);
+                                                                   false, false, FLAGS_post_sigma_thre, 0.03, 45.0, &icp_standard_deviation);
                 if (registration_status_scan2map < 0) //candidate wrong registration
                 {
                     add_length = 1.0;

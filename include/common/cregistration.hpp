@@ -1229,7 +1229,8 @@ class CRegistration : public CloudUtility<PointT>
 				   Eigen::Matrix4d initial_guess = Eigen::Matrix4d::Identity(), //used_feature_type (1: on, 0: off, order: ground, pillar, beam, facade, roof, vetrex)
 				   bool apply_intersection_filter = true, bool apply_motion_undistortion_while_registration = false,
 				   bool normal_shooting_on = false, float normal_bearing = 45.0, bool use_more_points = false,
-				   bool keep_less_source_points = false, float sigma_thre = 0.5, float min_neccessary_corr_ratio = 0.03, float max_bearable_rotation_d = 45.0) //sigma_thre means the maximum threshold of the posterior standar deviation of the registration LLS (unit:m)
+				   bool keep_less_source_points = false, float sigma_thre = 0.5, float min_neccessary_corr_ratio = 0.03, float max_bearable_rotation_d = 45.0,
+				   float* standard_deviation = NULL) //sigma_thre means the maximum threshold of the posterior standar deviation of the registration LLS (unit:m)
 
 	{
 		//LOG(INFO) << "Begin registration";
@@ -1481,7 +1482,11 @@ class CRegistration : public CloudUtility<PointT>
 												   pc_roof_sc, pc_roof_tc, corrs_roof,
 												   pc_vertex_sc, pc_vertex_tc, corrs_vertex,
 												   transform_x, sigma_square_post, sigma_thre))
+                {
 					process_code = 1;
+					if (standard_deviation != NULL)
+					    *standard_deviation = sqrt(sigma_square_post);
+		        }
 				else
 				{
 					process_code = -3;
@@ -1533,6 +1538,9 @@ class CRegistration : public CloudUtility<PointT>
 		registration_cons.information_matrix = information_matrix; //Final information matrix
 		registration_cons.sigma = std::sqrt(sigma_square_post);	//Final unit weight standard deviation
 		registration_cons.confidence = neccessary_corr_ratio;	  //posterior unground points overlapping ratio
+		
+		//static std::ofstream overlapping_ratio_file("SDBCS_Husky/15/overlapping_ratio.txt");
+		//overlapping_ratio_file << registration_cons.confidence << std::endl;
 
 		LOG(INFO) << "The posterior overlapping ratio is [" << registration_cons.confidence << "]";
 
@@ -2655,6 +2663,9 @@ class CRegistration : public CloudUtility<PointT>
 		sigma_square_post = VTPV / (obeservation_count - 6); //   VTPV/(n-t) , t is the neccessary observation number (dof), here, t=6
 
 		LOG(INFO) << "The posterior unit weight standard deviation (m) is " << sqrt(sigma_square_post);
+		
+		//static std::ofstream standard_deviation_file("SDBCS_Husky/15/standard_deviation.txt");
+		//standard_deviation_file << sqrt(sigma_square_post) << std::endl;
 
 		if (sqrt(sigma_square_post) < sigma_thre)
 			return 1;
