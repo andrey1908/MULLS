@@ -121,4 +121,5 @@
 -pose_graph_optimization_method: select from g2o, ceres and gtsam
 --pose_graph_optimization_method=ceres
 ---------------------------------------------------------------------------------------------------------------
---icp_standard_deviation_threshold=0.065
+-threshold 1.065 is too large so that it will never be reached. You can use 0.065.
+--icp_standard_deviation_threshold=1.065
