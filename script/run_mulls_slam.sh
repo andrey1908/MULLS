@@ -2,17 +2,23 @@
 #########################################################################################
 #                                  MULLS SLAM                                           #
 ############################# part to configure (down)###################################
-sequence_id=00
+
+if [ "$#" -ne 1 ]; then
+    echo "Illegal number of parameters"
+    exit 1
+fi
+
+sequence_id=$1
 
 #experiment unique name
 exp_id=xxx_id
 
 #data path (base folder)
-diskbase=dummyfolder/dummysubfolder
+diskbase=./
 
 #data path (project folder)
 #Example demo
-project_folder=./demo_data
+project_folder=./SDBCS_Husky/${sequence_id}
 #KITTI
 #project_folder=${diskbase}/kitti-dataset/sequences/${sequence_id}
 #HESAI
@@ -46,7 +52,7 @@ gt_body_pose_file=${project_folder}/${sequence_id}.txt #kitti ground truth file
 calib_file=${project_folder}/calib.txt
 
 #input config file path
-config_file=./script/config/lo_gflag_list_example_demo.txt
+config_file=./script/config/standard_settings.txt
 #config_file=./script/config/lo_gflag_list_kitti_urban.txt
 #config_file=./script/config/lo_gflag_list_kitti_highway.txt
 
@@ -105,7 +111,7 @@ ls ${pc_folder} >> ${pc_folder}_filelist.txt
 --real_time_viewer_on=1 \
 --gt_in_lidar_frame=0 \
 --gt_oxts_format=0 \
---write_out_map_on=1 \
+--write_out_map_on=0 \
 --write_out_gt_map_on=0 \
 --write_map_each_frame=0
 
