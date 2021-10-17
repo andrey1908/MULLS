@@ -57,6 +57,7 @@ def extract_rosbag_data(rosbag_file, point_cloud_topic_name, point_cloud_out_fol
             timestamp = msg.header.stamp.to_sec()
             odometry_stamps.append(timestamp)
             odometry_poses.append(msg.pose.pose)
+    rosbag_opened.close()
 
     if len(odometry_poses) > 0 and odometry_out_file:
         translation, rotation = get_odometry_transform()
